@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: "JetBrains Mono", monospace;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    background: #0a0a0a;
+    color: rgba(255,255,255,0.9);
+}
+
+body::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background:
+        radial-gradient(circle at 30% 30%, #222, transparent),
+        radial-gradient(circle at 70% 70%, #111, transparent);
+    opacity: 0.5;
+}
+
+.app {
+    position: relative;
+    z-index: 1;
+    background: linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.03));
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(30px) saturate(140%);
+    padding: 35px;
+    border-radius: 28px;
+    width: 90%;
+    max-width: 520px;
+    text-align: center;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.4),
+        inset 0 -10px 25px rgba(0,0,0,0.3),
+        0 0 40px rgba(0,0,0,0.5);
+    animation: fadeIn 0.8s ease;
+
+    max-height: 90vh;
+    overflow-y: auto;
+
+    transition: padding-bottom 0.25s ease;
+}
+
+/* default: no scroll */
+.app.compact {
+    padding-bottom: 20px;
+    overflow-y: hidden;
+}
+
+/* expanded: scroll allowed */
+.app:not(.compact) {
+    overflow-y: auto;
+}
+
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(25px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+h2 {
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-shadow: 0 0 8px rgba(255,255,255,0.2);
+}
+
+input {
+    width: 100%;
+    padding: 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.12);
+    outline: none;
+    font-size: 16px;
+    margin-bottom: 10px;
+    background: rgba(255,255,255,0.04);
+    color: white;
+    backdrop-filter: blur(10px);
+}
+
+button {
+    width: 100%;
+    padding: 14px;
+    margin: 8px 0;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.15);
+    font-size: 16px;
+    cursor: pointer;
+    color: white;
+    background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.03));
+    backdrop-filter: blur(20px);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.4),
+        inset 0 -4px 10px rgba(0,0,0,0.35),
+        0 0 10px rgba(0,0,0,0.4);
+    transition: all 0.25s ease;
+}
+
+button:hover {
+    transform: translateY(-3px) scale(1.02);
+}
+
+hr {
+    border: none;
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+    margin: 20px 0;
+}
+
+/* --- SMOOTH GPU SLIDE --- */
+#bookmarkWrapper {
+    overflow: hidden;
+    transform-origin: top;
+    transform: scaleY(0);
+    transition: transform 0.25s ease;
+}
+
+#bookmarkWrapper.open {
+    transform: scaleY(1);
+}
+
+/* --- BOOKMARK ITEMS --- */
+.bookmark {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    margin: 8px 0;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.03));
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.4),
+        inset 0 -4px 10px rgba(0,0,0,0.35),
+        0 0 10px rgba(0,0,0,0.4);
+    cursor: grab;
+    user-select: none;
+}
+
+.bookmark:active {
+    cursor: grabbing;
+}
+
+.bookmark-main {
+    flex: 1;
+    text-align: left;
+    padding-right: 10px;
+}
+
+.bookmark-actions {
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    font-size: 16px;
+}
+
+.bookmark:hover .bookmark-actions {
+    opacity: 1;
+}
+
+.bookmark-action {
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+}
+
+.bookmark-action:hover {
+    background: rgba(255,255,255,0.16);
+}
+
+/* drag-over visual */
+.bookmark.drag-over {
+    outline: 1px dashed rgba(255,255,255,0.5);
+}
+</style>
+</head>
+
+<body>
+
+<div class="app compact" id="appBox">
+    <h2>URL Launcher</h2>
+
+    <input id="customUrl" type="text" placeholder="Enter a URL">
+    <button id="openCustom">Launch</button>
+
+    <hr>
+
+    <button id="toggleBookmarks">Bookmarks ▼</button>
+
+    <div id="bookmarkWrapper">
+        <div id="buttonContainer"></div>
+
+        <hr>
+
+        <input id="newName" type="text" placeholder="Bookmark name">
+        <input id="newLink" type="text" placeholder="Bookmark URL">
+        <button id="addBookmark">Add Bookmark</button>
+    </div>
+</div>
+
+<script>
+let win = null;
+
+function normalizeURL(url) {
+    if (!/^https?:\/\//i.test(url)) return "https://" + url;
+    return url;
+}
+
+function openURL(url) {
+    url = normalizeURL(url);
+
+    if (win && !win.closed) {
+        win.focus();
+    } else {
+        win = window.open("", "_blank");
+        win.document.write("<body style='margin:0;height:100%;font-family:sans-serif;'>Loading...</body>");
+    }
+
+    win.document.body.innerHTML = "Loading...";
+
+    const iframe = win.document.createElement("iframe");
+    iframe.style.border = "none";
+    iframe.style.width = "100%";
+    iframe.style.height = "100%";
+
+    iframe.onerror = () => win.location.href = url;
+    iframe.src = url;
+
+    win.document.body.innerHTML = "";
+    win.document.body.appendChild(iframe);
+}
+
+const container = document.getElementById("buttonContainer");
+
+/* ---------------------------
+   LOCAL STORAGE BOOKMARK STORE
+---------------------------- */
+function saveBookmarks() {
+    const data = [...container.children].map(el => ({
+        name: el.querySelector(".bookmark-main").textContent.trim(),
+        url: el.dataset.url
+    }));
+    localStorage.setItem("bookmarks", JSON.stringify(data));
+}
+
+function loadBookmarks() {
+    const saved = JSON.parse(localStorage.getItem("bookmarks") || "[]");
+    if (saved.length === 0) return false;
+    saved.forEach(b => addBookmark(b.name, b.url));
+    return true;
+}
+
+/* ---------------------------
+   BOOKMARK ELEMENT CREATION
+---------------------------- */
+function createBookmarkElement(name, url) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "bookmark";
+    wrapper.draggable = true;
+    wrapper.dataset.url = url;
+
+    const main = document.createElement("div");
+    main.className = "bookmark-main";
+    main.textContent = name;
+
+    const actions = document.createElement("div");
+    actions.className = "bookmark-actions";
+
+    const edit = document.createElement("span");
+    edit.className = "bookmark-action";
+    edit.textContent = "🖉";
+
+    const del = document.createElement("span");
+    del.className = "bookmark-action";
+    del.textContent = "🗙";
+
+    actions.appendChild(edit);
+    actions.appendChild(del);
+
+    wrapper.appendChild(main);
+    wrapper.appendChild(actions);
+
+    main.onclick = () => openURL(wrapper.dataset.url);
+
+    edit.onclick = (e) => {
+        e.stopPropagation();
+        const newName = prompt("Edit name:", main.textContent.trim());
+        if (!newName) return;
+
+        const newUrl = prompt("Edit URL:", wrapper.dataset.url);
+        if (!newUrl) return;
+
+        main.textContent = newName.trim();
+        wrapper.dataset.url = newUrl.trim();
+        saveBookmarks();
+    };
+
+    del.onclick = (e) => {
+        e.stopPropagation();
+        wrapper.remove();
+        saveBookmarks();
+    };
+
+    wrapper.addEventListener("dragstart", handleDragStart);
+    wrapper.addEventListener("dragover", handleDragOver);
+    wrapper.addEventListener("dragleave", handleDragLeave);
+    wrapper.addEventListener("drop", handleDrop);
+    wrapper.addEventListener("dragend", handleDragEnd);
+
+    return wrapper;
+}
+
+function addBookmark(name, url) {
+    const el = createBookmarkElement(name, url);
+    container.appendChild(el);
+    saveBookmarks();
+}
+
+/* ---------------------------
+   LOAD DEFAULTS OR SAVED
+---------------------------- */
+if (!loadBookmarks()) {
+    [
+        ["Frogie's Arcade", "https://brooklyn.foundation"],
+        ["Frogie's Arcade 2", "https://parkviewpylusd.org"],
+        ["Frogie's Arcade 3", "https://gloverschool.org"],
+        ["Frogie's Arcade 4", "https://phi.bz"],
+        ["Frogie's Arcade 5", "https://denisonisd.org"],
+        ["Emulator", "https://shreks-emu.netlify.app"],
+        ["Emulator 2", "https://birdhub-retro-emulator.netlify.app"],
+        ["Nautilus OS", "https://jayland-dih-nautilus.vercel.app"],
+    ].forEach(([name, url]) => addBookmark(name, url));
+}
+
+/* ---------------------------
+   ENTER KEY LAUNCH
+---------------------------- */
+document.getElementById("customUrl").addEventListener("keydown", e => {
+    if (e.key === "Enter") {
+        const url = e.target.value.trim();
+        if (url) openURL(url);
+    }
+});
+
+/* ---------------------------
+   COLLAPSIBLE BOOKMARKS
+---------------------------- */
+const toggleBtn = document.getElementById("toggleBookmarks");
+const bookmarkWrapper = document.getElementById("bookmarkWrapper");
+const appBox = document.getElementById("appBox");
+
+toggleBtn.onclick = () => {
+    bookmarkWrapper.classList.toggle("open");
+    appBox.classList.toggle("compact");
+
+    toggleBtn.textContent = bookmarkWrapper.classList.contains("open")
+        ? "Bookmarks ▲"
+        : "Bookmarks ▼";
+};
+
+/* ---------------------------
+   ADD CUSTOM BOOKMARK
+---------------------------- */
+document.getElementById("addBookmark").onclick = () => {
+    const nameInput = document.getElementById("newName");
+    const linkInput = document.getElementById("newLink");
+
+    const name = nameInput.value.trim();
+    const link = linkInput.value.trim();
+
+    if (!name || !link) return;
+
+    addBookmark(name, link);
+
+    nameInput.value = "";
+    linkInput.value = "";
+};
+
+/* ---------------------------
+   DRAG & DROP LOGIC
+---------------------------- */
+let draggedEl = null;
+
+function handleDragStart(e) {
+    draggedEl = this;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", "");
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    if (this === draggedEl) return;
+    this.classList.add("drag-over");
+}
+
+function handleDragLeave(e) {
+    this.classList.remove("drag-over");
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    this.classList.remove("drag-over");
+    if (this === draggedEl) return;
+
+    const rect = this.getBoundingClientRect();
+    const offset = e.clientY - rect.top;
+    const before = offset < rect.height / 2;
+
+    if (before) {
+        container.insertBefore(draggedEl, this);
+    } else {
+        container.insertBefore(draggedEl, this.nextSibling);
+    }
+
+    saveBookmarks();
+}
+
+function handleDragEnd() {
+    draggedEl = null;
+    [...container.children].forEach(c => c.classList.remove("drag-over"));
+}
+
+/* ---------------------------
+   OPEN CUSTOM BUTTON
+---------------------------- */
+document.getElementById("openCustom").onclick = () => {
+    const url = document.getElementById("customUrl").value.trim();
+    if (url) openURL(url);
+};
+</script>
+
+</body>
+</html>
